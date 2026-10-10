@@ -1,0 +1,19 @@
+# Copy to infra/terraform.tfvars. Nothing here is secret: secret VALUES live in Secret Manager and are
+# loaded with `terraform -chdir=infra/secrets apply`. This file IS committed.
+
+project_id  = "myapp-owner"
+region      = "us-central1"
+app         = "myapp"
+domain      = "myapp.com.ar"
+github_repo = "owner/myapp"
+
+superadmin_email       = "someone@gmail.com"
+google_oauth_client_id = ""
+
+# Only when ADOPTING an existing project: the run.app URL the api already uses.
+# api_url = "https://myapp-api-xxxxxxxxxx-uc.a.run.app"
+
+optional_secrets = []
+
+billing_account = ""
+budget_usd      = 20

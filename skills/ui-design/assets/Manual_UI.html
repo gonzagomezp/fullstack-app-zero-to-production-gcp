@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="es" data-accent="blue" class="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Manual de UI — Soft Tech</title>
+
+<!-- Aplicar tema antes del paint para evitar flash -->
+<script>
+  (function () {
+    try {
+      var t = localStorage.getItem('ui-theme');
+      var a = localStorage.getItem('ui-accent');
+      if (t === 'light') document.documentElement.classList.remove('dark');
+      if (t === 'dark') document.documentElement.classList.add('dark');
+      if (a) document.documentElement.setAttribute('data-accent', a);
+    } catch (e) {}
+  })();
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+          display: ['"Bricolage Grotesque"', '"Plus Jakarta Sans"', 'sans-serif'],
+          mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+        },
+      },
+    },
+  };
+</script>
+
+<style>
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --surface-2: #f5f5f4;
+    --surface-3: #ebebe9;
+    --border: #e7e5e4;
+    --border-strong: #d6d3d1;
+    --text: #1c1917;
+    --muted: #78716c;
+    --faint: #a8a29e;
+
+    --accent: #3b82f6;
+    --accent-fg: #ffffff;
+    --accent-hover: #2f76ec;
+
+    --success: #16a34a;
+    --warning: #d97706;
+    --danger: #dc2626;
+
+    --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+    --accent-soft-2: color-mix(in srgb, var(--accent) 22%, transparent);
+    --accent-ring: color-mix(in srgb, var(--accent) 32%, transparent);
+
+    --shadow-sm: 0 1px 2px rgba(28, 25, 23, 0.06);
+    --shadow-md: 0 6px 20px -6px rgba(28, 25, 23, 0.14);
+    --shadow-lg: 0 24px 60px -18px rgba(28, 25, 23, 0.30);
+  }
+
+  html.dark {
+    --bg: #0e0e10;
+    --surface: #161618;
+    --surface-2: #1d1d20;
+    --surface-3: #27272b;
+    --border: #2a2a2f;
+    --border-strong: #3a3a40;
+    --text: #f4f4f5;
+    --muted: #a1a1aa;
+    --faint: #71717a;
+
+    --accent-fg: #ffffff;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 8px 28px -8px rgba(0, 0, 0, 0.55);
+    --shadow-lg: 0 30px 70px -20px rgba(0, 0, 0, 0.7);
+  }
+
+  html[data-accent='blue']   { --accent: #3b82f6; --accent-hover: #2f76ec; }
+  html[data-accent='orange'] { --accent: #f97316; --accent-hover: #ea670b; }
+  html[data-accent='purple'] { --accent: #a855f7; --accent-hover: #9b46ec; }
+
+  * { -webkit-font-smoothing: antialiased; }
+  body { background: var(--bg); color: var(--text); }
+
+  ::selection { background: var(--accent-soft-2); }
+
+  /* Scrollbar fino para paneles */
+  .scroll-thin::-webkit-scrollbar { width: 8px; }
+  .scroll-thin::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
+  .scroll-thin::-webkit-scrollbar-track { background: transparent; }
+
+  /* Scrollbar global de la página (se adapta a light/dark vía variables) */
+  html { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; } /* Firefox */
+  html::-webkit-scrollbar { width: 12px; height: 12px; }
+  html::-webkit-scrollbar-track { background: transparent; }
+  html::-webkit-scrollbar-corner { background: transparent; }
+  html::-webkit-scrollbar-thumb {
+    background-color: var(--border-strong);
+    border-radius: 999px;
+    border: 3px solid var(--bg);
+    background-clip: padding-box;
+  }
+  html::-webkit-scrollbar-thumb:hover { background-color: var(--faint); }
+
+  /* Animaciones */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes dotpulse { 0%, 80%, 100% { transform: scale(0.5); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
+  @keyframes barslide { 0% { left: -40%; } 100% { left: 100%; } }
+  @keyframes shimmer { 100% { transform: translateX(100%); } }
+  @keyframes pop-in { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes toast-in { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+
+  .anim-spin { animation: spin 0.7s linear infinite; }
+  .dot { width: 10px; height: 10px; border-radius: 999px; background: var(--accent); animation: dotpulse 1.2s ease-in-out infinite; }
+  .skeleton { position: relative; overflow: hidden; background: var(--surface-3); }
+  .skeleton::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--text) 8%, transparent), transparent); animation: shimmer 1.4s infinite; }
+
+  .pop-in { animation: pop-in 0.16s ease-out; }
+
+  /* Componentes utilitarios reutilizables --------------------------- */
+
+  /* Inputs base */
+  .ui-field {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 14px;
+    padding: 14px 16px;
+    font-size: 16px;
+    line-height: 1.4;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  }
+  .ui-field::placeholder { color: var(--faint); }
+  .ui-field:hover { border-color: var(--border-strong); }
+  .ui-field:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-ring); }
+
+  /* Botón base */
+  .ui-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    font-weight: 600; font-size: 15px; line-height: 1;
+    padding: 13px 20px; border-radius: 14px; cursor: pointer;
+    border: 1px solid transparent; user-select: none;
+    transition: transform 0.06s, background 0.15s, border-color 0.15s, box-shadow 0.15s, color 0.15s;
+  }
+  .ui-btn:active { transform: translateY(1px); }
+  .ui-btn:focus-visible { outline: none; box-shadow: 0 0 0 4px var(--accent-ring); }
+  .ui-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .btn-primary { background: var(--accent); color: var(--accent-fg); }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .btn-secondary { background: var(--surface-2); color: var(--text); border-color: var(--border); }
+  .btn-secondary:hover:not(:disabled) { background: var(--surface-3); }
+  .btn-soft { background: var(--accent-soft); color: var(--accent); }
+  .btn-soft:hover:not(:disabled) { background: var(--accent-soft-2); }
+  .btn-ghost { background: transparent; color: var(--text); }
+  .btn-ghost:hover:not(:disabled) { background: var(--surface-2); }
+  .btn-outline { background: transparent; color: var(--text); border-color: var(--border-strong); }
+  .btn-outline:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-danger:hover:not(:disabled) { filter: brightness(1.08); }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; }
+</style>
+</head>
+
+<body class="font-sans">
+
+<!-- ============================= TOP BAR ============================= -->
+<header class="sticky top-0 z-40 backdrop-blur-md" style="background: color-mix(in srgb, var(--bg) 82%, transparent); border-bottom: 1px solid var(--border);">
+  <div class="mx-auto max-w-[1240px] px-6 h-[68px] flex items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl grid place-items-center font-bold text-[15px]" style="background: var(--accent); color: var(--accent-fg);">UI</div>
+      <div class="leading-tight">
+        <div class="font-extrabold tracking-tight text-[17px]">Manual de UI</div>
+        <div class="font-mono text-[11px]" style="color: var(--muted);">soft&nbsp;tech&nbsp;/&nbsp;v1.0</div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <!-- Switcher de acento -->
+      <div class="hidden sm:flex items-center gap-2 px-2.5 py-2 rounded-2xl" style="background: var(--surface-2); border: 1px solid var(--border);">
+        <span class="font-mono text-[11px] pl-1 pr-0.5" style="color: var(--muted);">acento</span>
+        <button data-set-accent="blue"   aria-label="Acento azul"    class="w-6 h-6 rounded-full transition" style="background:#3b82f6;"></button>
+        <button data-set-accent="orange" aria-label="Acento naranja" class="w-6 h-6 rounded-full transition" style="background:#f97316;"></button>
+        <button data-set-accent="purple" aria-label="Acento violeta" class="w-6 h-6 rounded-full transition" style="background:#a855f7;"></button>
+      </div>
+
+      <!-- Toggle tema -->
+      <button id="theme-toggle" class="ui-btn btn-secondary !px-3.5 !py-3" aria-label="Cambiar tema">
+        <svg class="theme-sun w-5 h-5 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg>
+        <svg class="theme-moon w-5 h-5 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ============================= LAYOUT ============================= -->
+<div class="mx-auto max-w-[1240px] px-6 flex gap-10">
+
+  <!-- SIDEBAR -->
+  <aside class="hidden lg:block w-[200px] shrink-0 sticky top-[68px] self-start h-[calc(100vh-68px)] overflow-y-auto scroll-thin py-10">
+    <nav class="flex flex-col gap-0.5 text-[14px]" id="side-nav">
+      <span class="font-mono text-[11px] uppercase tracking-wider px-3 mt-2 mb-1" style="color: var(--faint);">Fundamentos</span>
+      <a href="#color"      class="nav-link">Color</a>
+      <a href="#tipografia" class="nav-link">Tipografía</a>
+      <a href="#radios"     class="nav-link">Radios y sombras</a>
+      <span class="font-mono text-[11px] uppercase tracking-wider px-3 mt-5 mb-1" style="color: var(--faint);">Componentes</span>
+      <a href="#botones"    class="nav-link">Botones</a>
+      <a href="#inputs"     class="nav-link">Inputs</a>
+      <a href="#number"     class="nav-link">Number input</a>
+      <a href="#select"     class="nav-link">Select</a>
+      <a href="#date"       class="nav-link">Date picker</a>
+      <a href="#time"       class="nav-link">Time picker</a>
+      <a href="#seleccion"  class="nav-link">Selección</a>
+      <a href="#loaders"    class="nav-link">Loaders</a>
+      <a href="#tooltips"   class="nav-link">Tooltips</a>
+      <a href="#tabs"       class="nav-link">Tabs</a>
+      <a href="#overlays"   class="nav-link">Modales y drawers</a>
+      <a href="#toasts"     class="nav-link">Toasts</a>
+    </nav>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="flex-1 min-w-0 py-12 pb-40">
+
+    <!-- HERO -->
+    <section class="mb-24">
+      <div class="font-mono text-[12px] tracking-wide mb-5" style="color: var(--accent);">SISTEMA DE DISEÑO · REFERENCIA</div>
+      <h1 class="font-display font-extrabold tracking-[-0.035em] leading-[0.95] text-[clamp(44px,7vw,84px)]">
+        Componentes<br/>para construir<br/>interfaces.
+      </h1>
+      <p class="mt-8 max-w-[560px] text-[19px] leading-relaxed" style="color: var(--muted);">
+        Una base limpia y profesional: tipografía grande, esquinas suaves y elementos custom listos para reutilizar. Cambiá el tema y el color de acento desde la barra superior.
+      </p>
+      <div class="mt-10 flex flex-wrap gap-3">
+        <a href="#botones" class="ui-btn btn-primary">Ver componentes</a>
+        <a href="#color" class="ui-btn btn-outline">Empezar por fundamentos</a>
+      </div>
+    </section>
+
+    <!-- ===================== COLOR ===================== -->
+    <section id="color" class="scroll-mt-24 mb-28">
+      <div class="sec-head">
+        <h2 class="sec-title">Color</h2>
+        <p class="sec-desc">Neutros cálidos como base y un único color de acento. Probá los tres acentos desde arriba; todo el sistema reacciona en vivo.</p>
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-5">
+        <div class="card p-6">
+          <div class="font-mono text-[12px] mb-4" style="color: var(--muted);">NEUTROS</div>
+          <div class="grid grid-cols-4 gap-3">
+            <div class="swatch" style="background: var(--bg);"></div>
+            <div class="swatch" style="background: var(--surface);"></div>
+            <div class="swatch" style="background: var(--surface-2);"></div>
+            <div class="swatch" style="background: var(--surface-3);"></div>
+            <div class="swatch" style="background: var(--border); grid-column: span 1;"></div>
+            <div class="swatch" style="background: var(--muted);"></div>
+            <div class="swatch" style="background: var(--text);"></div>
+            <div class="swatch grid place-items-center font-mono text-[10px]" style="background: var(--surface-2); color: var(--faint);">+8</div>
+          </div>
+        </div>
+        <div class="card p-6">
+          <div class="font-mono text-[12px] mb-4" style="color: var(--muted);">ACENTO Y SEMÁNTICOS</div>
+          <div class="grid grid-cols-4 gap-3">
+            <div class="swatch ring-2 ring-offset-2" style="background: var(--accent); --tw-ring-color: var(--accent-soft-2); --tw-ring-offset-color: var(--surface);"></div>
+            <div class="swatch" style="background: var(--accent-soft);"></div>
+            <div class="swatch" style="background: var(--success);"></div>
+            <div class="swatch" style="background: var(--warning);"></div>
+            <div class="swatch" style="background: var(--danger);"></div>
+          </div>
+          <div class="mt-5 flex flex-wrap gap-2 font-mono text-[11px]" style="color: var(--muted);">
+            <span class="chip">accent</span><span class="chip">success</span><span class="chip">warning</span><span class="chip">danger</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== TIPOGRAFÍA ===================== -->
+    <section id="tipografia" class="scroll-mt-24 mb-28">
+      <div class="sec-head">
+        <h2 class="sec-title">Tipografía</h2>
+        <p class="sec-desc"><strong style="color:var(--text);font-weight:600">Bricolage Grotesque</strong> para títulos y display, <strong style="color:var(--text);font-weight:600">Plus Jakarta Sans</strong> para el cuerpo de texto y <strong style="color:var(--text);font-weight:600">JetBrains Mono</strong> para datos y etiquetas. La escala es grande y con tracking ajustado en los títulos.</p>
+      </div>
+      <div class="card p-8 sm:p-10 space-y-7">
+        <div class="flex items-baseline gap-5 flex-wrap">
+          <span class="font-mono text-[11px] w-16 shrink-0" style="color: var(--faint);">800/72</span>
+          <span class="font-display font-extrabold tracking-[-0.03em] text-[clamp(40px,6vw,72px)] leading-none">Display · Bricolage</span>
+        </div>
+        <div class="flex items-baseline gap-5 flex-wrap" style="border-top: 1px solid var(--border); padding-top: 28px;">
+          <span class="font-mono text-[11px] w-16 shrink-0" style="color: var(--faint);">700/40</span>
+          <span class="font-display font-bold tracking-[-0.02em] text-[40px] leading-none">Encabezado de sección</span>
+        </div>
+        <div class="flex items-baseline gap-5 flex-wrap" style="border-top: 1px solid var(--border); padding-top: 28px;">
+          <span class="font-mono text-[11px] w-16 shrink-0" style="color: var(--faint);">600/24</span>
+          <span class="font-semibold text-[24px] leading-snug">Subtítulo de componente</span>
+        </div>
+        <div class="flex items-baseline gap-5 flex-wrap" style="border-top: 1px solid var(--border); padding-top: 28px;">
+          <span class="font-mono text-[11px] w-16 shrink-0" style="color: var(--faint);">400/18</span>
+          <span class="text-[18px] leading-relaxed max-w-[520px]" style="color: var(--muted);">Texto de cuerpo cómodo de leer, con buen interlineado para párrafos largos dentro de la interfaz.</span>
+        </div>
+        <div class="flex items-baseline gap-5 flex-wrap" style="border-top: 1px solid var(--border); padding-top: 28px;">
+          <span class="font-mono text-[11px] w-16 shrink-0" style="color: var(--faint);">mono/13</span>
+          <span class="font-mono text-[13px]" style="color: var(--accent);">data · etiquetas · 1.000.000,00</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== RADIOS Y SOMBRAS ===================== -->
+    <section id="radios" class="scroll-mt-24 mb-28">
+      <div class="sec-head">
+        <h2 class="sec-title">Radios y sombras</h2>
+        <p class="sec-desc">Esquinas bien redondeadas en toda la interfaz y sombras suaves para elevar superficies sin ruido.</p>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-5">
+        <div class="card p-5 flex flex-col items-center gap-4">
+          <div class="w-20 h-20" style="background: var(--accent-soft); border-radius: 12px;"></div>
+          <span class="font-mono text-[12px]" style="color: var(--muted);">12px · sm</span>
+        </div>
+        <div class="card p-5 flex flex-col items-center gap-4">
+          <div class="w-20 h-20" style="background: var(--accent-soft); border-radius: 16px;"></div>
+          <span class="font-mono text-[12px]" style="color: var(--muted);">16px · md</span>
+        </div>
+        <div class="card p-5 flex flex-col items-center gap-4">
+          <div class="w-20 h-20" style="background: var(--accent-soft); border-radius: 24px;"></div>
+          <span class="font-mono text-[12px]" style="color: var(--muted);">24px · lg</span>
+        </div>
+        <div class="card p-5 flex flex-col items-center gap-4">
+          <div class="w-20 h-20" style="background: var(--accent-soft); border-radius: 999px;"></div>
+          <span class="font-mono text-[12px]" style="color: var(--muted);">full</span>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-5">
+        <div class="p-6 rounded-2xl" style="background: var(--surface); box-shadow: var(--shadow-sm);"><span class="font-mono text-[12px]" style="color: var(--muted);">shadow-sm</span></div>
+        <div class="p-6 rounded-2xl" style="background: var(--surface); box-shadow: var(--shadow-md);"><span class="font-mono text-[12px]" style="color: var(--muted);">shadow-md</span></div>
+        <div class="p-6 rounded-2xl" style="background: var(--surface); box-shadow: var(--shadow-lg);"><span class="font-mono text-[12px]" style="color: var(--muted);">shadow-lg</span></div>
+      </div>
+    </section>
+
+    <!-- ===================== BOTONES ===================== -->
+    <section id="botones" class="scroll-mt-24 mb-28">
+      <div class="sec-head">
+        <h2 class="sec-title">Botones</h2>
+        <p class="sec-desc">Una jerarquía clara: una sola acción primaria por vista, el resto en tonos más bajos.</p>
+      </div>
+      <div class="card p-8">
+        <div class="flex flex-wrap items-center gap-3">
+          <button class="ui-btn btn-primary">Primario</button>
+          <button class="ui-btn btn-secondary">Secundario</button>
+          <button class="ui-btn btn-soft">Soft</button>
+          <button class="ui-btn btn-outline">Outline</button>
+          <button class="ui-btn btn-ghost">Ghost</button>
+          <button class="ui-btn btn-danger">Eliminar</button>
+          <button class="ui-btn btn-primary" disabled>Deshabilitado</button>
+        </div>
+        <div class="flex flex-wrap items-center gap-3 mt-6" style="border-top: 1px solid var(--border); padding-top: 28px;">
+          <button class="ui-btn btn-primary !py-2.5 !px-3.5 !text-[13px]">Small</button>
+          <button class="ui-btn btn-primary">Medium</button>
+          <button class="ui-btn btn-primary !py-4 !px-7 !text-[17px]">Large</button>
+          <button class="ui-btn btn-secondary">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            Con icono
+          </button>
+          <button class="ui-btn btn-soft !px-3.5" aria-label="Icono">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+          <button class="ui-btn btn-primary" id="btn-loading-demo">
+            <span class="anim-spin w-4 h-4 rounded-full" style="border: 2px solid color-mix(in srgb, var(--accent-fg) 40%, transparent); border-top-color: var(--accent-fg);"></span>
+            Cargando
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== INPUTS ===================== -->
+    <section id="inputs" class="scroll-mt-24 mb-28">
+      <div class="sec-head">
+        <h2 class="sec-title">Inputs de texto</h2>
+        <p class="sec-desc">Campos amplios con foco claro mediante un anillo de color de acento. Estados de error y ayuda incluidos.</p>
+      </div>
+      <div class="card p-8 grid sm:grid-cols-2 gap-7">
+        <label class="block">
+          <span class="ui-label">Nombre completo</span>
+          <input type="text" class="ui-field" placeholder="Ej: Ana Pérez" />
+        </label>
+        <label class="block">
+          <span class="ui-label">Email</span>
+          <input type="email" class="ui-field" placeholder="ana@empresa.com" />
+        </label>
+        <label class="block">
+          <span class="ui-label">Con prefijo</span>
+          <div class="flex items-center ui-field !p-0 overflow-hidden focus-within:!border-[var(--accent)]" style="box-shadow: none;">
+            <span class="px-4 font-mono text-[14px] self-stretch flex items-center" style="background: var(--surface-2); color: var(--muted); border-right: 1px solid var(--border);">https://</span>
+            <input type="text" class="flex-1 bg-transparent border-0 outline-none px-4 py-[14px] text-[16px]" placeholder="midominio.com" style="color: var(--text);" />
+          </div>
+        </label>
+        <label class="block">
+          <span class="ui-label" style="color: var(--danger);">Con error</span>
+          <input type="text" class="ui-field" value="valor inválido" style="border-color: var(--danger); box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 18%, transparent);" />
+          <span class="mt-2 block text-[13px]" style="color: var(--danger);">Este campo es obligatorio.</span>
+        </label>
+        <label class="block sm:col-span-2">
+          <span class="ui-label">Mensaje</span>
+          <textarea rows="4" class="ui-field resize-y" placeholder="Escribí tu mensaje…"></textarea>
+          <span class="mt-2 block text-[13px]" style="color: var(--muted);">Máximo 500 caracteres.</span>
+        </label>
+      </div>
+    </section>
+
+    <!-- ===================== NUMBER INPUT ===================== -->
+    <section id="number" class="scroll-mt-24 mb-28">
+      <div class="sec-head">
+        <h2 class="sec-title">Number input</h2>
+        <p class="sec-desc">Sin flechas, con separador de miles y decimales en formato local: <span class="font-mono" style="color: var(--accent);">1.000.000,00</span>. El valor numérico real queda disponible para tu lógica.</p>
+      </div>
+      <div class="card p-8 grid sm:grid-cols-2 gap-7">
+        <label class="block">
+          <span class="ui-label">Monto</span>
+          <div class="flex items-center ui-field !p-0 overflow-hidden" style="box-shadow:none;" data-num-wrap>
+            <span class="px-4 font-medium self-stretch flex items-center text-[16px]" style="color: var(--muted); border-right: 1px solid var(--border);">$</span>
+            <input type="text" inputmode="decimal" class="flex-1 bg-transparent border-0 outline-none px-4 py-[14px] text-[16px] font-medium tabular-nums"
+                   data-number-input data-decimals="2" placeholder="0,00" value="1250000,5" style="color: var(--text);" />
+          </div>
+          <span class="mt-2 block text-[13px] font-mono" style="color: var(--muted);">valor: <span data-num-readout>—</span></span>
+        </label>
+
+        <label class="block">
+          <span class="ui-label">Cantidad (entero)</span>
+          <input type="text" inputmode="numeric" class="ui-field tabular-nums" data-number-input data-decimals="0" placeholder="0" value="48000" />
+          <span class="mt-2 block text-[13px]" style="color: var(--muted);">Sin decimales, solo miles.</span>
+        </label>
+
+        <label class="block">
+          <span class="ui-label">Porcentaje</span>
+          <div class="flex items-center ui-field !p-0 overflow-hidden" style="box-shadow:none;">
+            <input type="text" inputmode="decimal" class="flex-1 bg-transparent border-0 outline-none px-4 py-[14px] text-[16px] font-medium tabular-nums" data-number-input data-decimals="2" placeholder="0,00" style="color: var(--text);" />
+            <span class="px-4 font-medium self-stretch flex items-center text-[16px]" style="color: var(--muted); border-left: 1px solid var(--border);">%</span>
+          </div>
+        </label>
+
+        <div class="block">
+          <span class="ui-label">Con stepper custom (sin flechas nativas)</span>
+          <div class="flex items-stretch gap-2">
+            <button type="button" class="ui-btn btn-secondary !px-5" data-step="-1" aria-label="Restar">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14"/></svg>
+            </button>
+            <input type="text" inputmode="numeric" class="ui-field text-center tabular-nums font-semibold" data-number-input data-decimals="0" data-step-target value="10" />
+            <button type="button" class="ui-btn btn-secondary !px-5" data-step="1" aria-label="Sumar">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== SELECT ===================== -->
+    <section id="select" class="scroll-mt-24 mb-28">
+      <div class="sec-head">
+        <h2 class="sec-title">Select custom</h2>
+        <p class="sec-desc">Dropdown propio con navegación por teclado (flechas, Enter, Esc), búsqueda visual del seleccionado y cierre al hacer click afuera.</p>
+      </div>
+      <div class="card p-8 grid sm:grid-cols-2 gap-7">
+        <label class="block">
+          <span class="ui-label">País</span>
+          <div data-select data-placeholder="Elegí un país">
+            <div data-options="Argentina|Brasil|Chile|Colombia|México|Perú|Uruguay"></div>
+          </div>
+        </label>
+        <label class="block">
+          <span class="ui-label">Moneda (con valor inicial)</span>
+          <div data-select data-value="USD — Dólar">
+            <div data-options="ARS — Peso argentino|USD — Dólar|EUR — Euro|BRL — Real"></div>
+          </div>
+        </label>
+      </div>
+    </section>
+
+    <!-- ===================== DATE PICKER ===================== -->
+    <section id="date" class="scroll-mt-24 mb-28">
+      <div class="sec-head">
+        <h2 class="sec-title">Date picker</h2>
+        <p class="sec-desc">Calendario propio, semana de lunes a domingo, con navegación de meses, día de hoy y acceso rápido. Devuelve <span class="font-mono" style="color: var(--accent);">dd/mm/aaaa</span>.</p>
+      </div>
+      <div class="card p-8 grid sm:grid-cols-2 gap-7">
+        <label class="block">
+          <span class="ui-label">Fecha de inicio</span>
+          <div data-datepicker data-placeholder="dd/mm/aaaa"></div>
+        </label>
+        <label class="block">
+          <span class="ui-label">Fecha de nacimiento</span>
+          <div data-datepicker data-placeholder="dd/mm/aaaa"></div>
+        </label>
+      </div>
+    </section>
+
+    <!-- ===================== TIME PICKER ===================== -->
+    <section id="time" class="scroll-mt-24 mb-28">
+      <div class="sec-head">
+        <h2 class="sec-title">Time picker</h2>
+        <p class="sec-desc">Selector de hora en formato 24h con columnas de horas y minutos desplazables. Devuelve <span class="font-mono" style="color: var(--accent);">HH:MM</span>.</p>
+      </div>
+      <div class="card p-8 grid sm:grid-cols-2 gap-7">
+        <label class="block">
+          <span class="ui-label">Hora de la cita</span>
+          <div data-timepicker data-placeholder="--:--"></div>
+        </label>
+        <label class="block">
+          <span class="ui-label">Recordatorio (con valor)</span>
+          <div data-timepicker data-value="09:30"></div>
+        </label>
+      </div>
+    </section>
+
+    <!-- ===================== SELECCIÓN ===================== -->
+    <section id="seleccion" class="scroll-mt-24 mb-28">
+      <div class="sec-head">
+        <h2 class="sec-title">Selección</h2>
+        <p class="sec-desc">Checkbox, radio y toggle construidos sobre inputs nativos para mantener accesibilidad y foco por teclado.</p>
+      </div>
+      <div class="card p-8 grid sm:grid-cols-3 gap-8">
+        <div>
+          <div class="ui-label">Checkbox</div>
+          <div class="space-y-3">
+            <label class="ui-check"><input type="checkbox" class="peer sr-only" checked /><span class="ui-box"></span><span>Notificaciones</span></label>
+            <label class="ui-check"><input type="checkbox" class="peer sr-only" /><span class="ui-box"></span><span>Resumen semanal</span></label>
+            <label class="ui-check opacity-50 cursor-not-allowed"><input type="checkbox" class="peer sr-only" disabled /><span class="ui-box"></span><span>Deshabilitado</span></label>
+          </div>
+        </div>
+        <div>
+          <div class="ui-label">Radio</div>
+          <div class="space-y-3">
+            <label class="ui-check"><input type="radio" name="plan" class="peer sr-only" checked /><span class="ui-radio"></span><span>Mensual</span></label>
+            <label class="ui-check"><input type="radio" name="plan" class="peer sr-only" /><span class="ui-radio"></span><span>Anual</span></label>
+            <label class="ui-check"><input type="radio" name="plan" class="peer sr-only" /><span class="ui-radio"></span><span>Por uso</span></label>
+          </div>
+        </div>
+        <div>
+          <div class="ui-label">Toggle</div>
+          <div class="space-y-4">
+            <label class="ui-check justify-between w-full"><span>Modo automático</span><input type="checkbox" class="peer sr-only" checked /><span class="ui-switch"></span></label>
+            <label class="ui-check justify-between w-full"><span>Sincronizar</span><input type="checkbox" class="peer sr-only" /><span class="ui-switch"></span></label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== LOADERS ===================== -->
+    <section id="loaders" class="scroll-mt-24 mb-28">
+      <div class="sec-head">
+        <h2 class="sec-title">Loaders</h2>
+        <p class="sec-desc">Indicadores de carga para distintos contextos: acción puntual, proceso indeterminado y carga de contenido.</p>
+      </div>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div class="card p-7 flex flex-col items-center justify-center gap-5 min-h-[160px]">
+          <span class="anim-spin w-9 h-9 rounded-full" style="border: 3px solid var(--surface-3); border-top-color: var(--accent);"></span>
+          <span class="font-mono text-[12px]" style="color: var(--muted);">spinner</span>
+        </div>
+        <div class="card p-7 flex flex-col items-center justify-center gap-5 min-h-[160px]">
+          <div class="flex gap-2">
+            <span class="dot" style="animation-delay:0s"></span>
+            <span class="dot" style="animation-delay:0.15s"></span>
+            <span class="dot" style="animation-delay:0.3s"></span>
+          </div>
+          <span class="font-mono text-[12px]" style="color: var(--muted);">dots</span>
+        </div>
+        <div class="card p-7 flex flex-col items-center justify-center gap-5 min-h-[160px]">
+          <div class="w-full h-2 rounded-full overflow-hidden relative" style="background: var(--surface-3);">
+            <span class="absolute top-0 h-full w-2/5 rounded-full" style="background: var(--accent); animation: barslide 1.3s ease-in-out infinite;"></span>
+          </div>
+          <span class="font-mono text-[12px]" style="color: var(--muted);">barra indet.</span>
+        </div>
+        <div class="card p-7 flex flex-col justify-center gap-3 min-h-[160px]">
+          <div class="skeleton h-3 rounded-full w-3/4"></div>
+          <div class="skeleton h-3 rounded-full w-full"></div>
+          <div class="skeleton h-3 rounded-full w-5/6"></div>
+          <span class="font-mono text-[12px] mt-2" style="color: var(--muted);">skeleton</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== TOOLTIPS ===================== -->
+    <section id="tooltips" class="scroll-mt-24 mb-28">
+      <div class="sec-head">
+        <h2 class="sec-title">Tooltips</h2>
+        <p class="sec-desc">Aparecen al pasar el mouse o al enfocar con teclado. Pasá el cursor sobre los botones.</p>
+      </div>
+      <div class="card p-8 flex flex-wrap gap-10">
+        <span class="ui-tip-wrap"><button class="ui-btn btn-secondary" tabindex="0">Arriba</button><span class="ui-tip ui-tip-top">Tooltip arriba</span></span>
+        <span class="ui-tip-wrap"><button class="ui-btn btn-secondary" tabindex="0">Abajo</button><span class="ui-tip ui-tip-bottom">Tooltip abajo</span></span>
+        <span class="ui-tip-wrap"><button class="ui-btn btn-soft !px-3.5" tabindex="0" aria-label="Info"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5h.01"/></svg></button><span class="ui-tip ui-tip-top">Más información sobre este dato</span></span>
+      </div>
+    </section>
+
+    <!-- ===================== TABS ===================== -->
+    <section id="tabs" class="scroll-mt-24 mb-28">
+      <div class="sec-head">
+        <h2 class="sec-title">Tabs</h2>
+        <p class="sec-desc">Pestañas con indicador deslizante. Cambian el contenido sin recargar.</p>
+      </div>
+      <div class="card p-8" data-tabs>
+        <div class="inline-flex p-1.5 rounded-2xl gap-1" style="background: var(--surface-2);" role="tablist">
+          <button class="tab-btn" data-tab="t1">Resumen</button>
+          <button class="tab-btn" data-tab="t2">Actividad</button>
+          <button class="tab-btn" data-tab="t3">Ajustes</button>
+        </div>
+        <div class="mt-7">
+          <div data-panel="t1" class="text-[17px] leading-relaxed" style="color: var(--muted);">Vista general con los indicadores principales del período.</div>
+          <div data-panel="t2" class="text-[17px] leading-relaxed hidden" style="color: var(--muted);">Registro de eventos recientes ordenados por fecha.</div>
+          <div data-panel="t3" class="text-[17px] leading-relaxed hidden" style="color: var(--muted);">Preferencias de la cuenta y configuración avanzada.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== OVERLAYS ===================== -->
+    <section id="overlays" class="scroll-mt-24 mb-28">
+      <div class="sec-head">
+        <h2 class="sec-title">Modales, drawers y diálogos</h2>
+        <p class="sec-desc">Superficies superpuestas con fondo difuminado, cierre con Esc o click afuera, y variantes de advertencia (no destructiva) y destructiva.</p>
+      </div>
+      <div class="card p-8 flex flex-wrap gap-3">
+        <button class="ui-btn btn-primary" data-open="modal-default">Abrir modal</button>
+        <button class="ui-btn btn-secondary" data-open="drawer-right">Abrir drawer</button>
+        <button class="ui-btn btn-soft" data-open="dialog-info">Diálogo informativo</button>
+        <button class="ui-btn btn-outline" data-open="dialog-confirm">Diálogo de confirmación</button>
+        <button class="ui-btn" style="background: color-mix(in srgb, var(--warning) 14%, transparent); color: var(--warning);" data-open="dialog-attention">Diálogo de advertencia</button>
+        <button class="ui-btn btn-danger" data-open="dialog-warning">Advertencia destructiva</button>
+      </div>
+    </section>
+
+    <!-- ===================== TOASTS ===================== -->
+    <section id="toasts" class="scroll-mt-24 mb-10">
+      <div class="sec-head">
+        <h2 class="sec-title">Toasts</h2>
+        <p class="sec-desc">Notificaciones breves que se apilan en una esquina y se descartan solas. Cuatro variantes semánticas.</p>
+      </div>
+      <div class="card p-8 flex flex-wrap gap-3">
+        <button class="ui-btn btn-soft" onclick="showToast({variant:'success', title:'Guardado', desc:'Los cambios se aplicaron correctamente.'})">Success</button>
+        <button class="ui-btn btn-soft" onclick="showToast({variant:'info', title:'Sincronizando', desc:'Esto puede tardar unos segundos.'})">Info</button>
+        <button class="ui-btn btn-soft" onclick="showToast({variant:'warning', title:'Atención', desc:'Tu sesión expira en 5 minutos.'})">Warning</button>
+        <button class="ui-btn btn-soft" onclick="showToast({variant:'error', title:'Error', desc:'No se pudo conectar con el servidor.'})">Error</button>
+      </div>
+    </section>
+
+    <footer class="pt-10 mt-10 font-mono text-[12px]" style="border-top: 1px solid var(--border); color: var(--faint);">
+      Manual de UI · soft tech · construido con Tailwind y componentes vanilla reutilizables.
+    </footer>
+  </main>
+</div>
+
+<!-- ===================== OVERLAY MARKUP ===================== -->
+<!-- Modal default -->
+<div class="ui-overlay" data-overlay="modal-default">
+  <div class="ui-backdrop" data-overlay-close></div>
+  <div class="ui-modal pop-in" role="dialog" aria-modal="true">
+    <div class="flex items-start justify-between gap-4 mb-2">
+      <h3 class="font-display text-[24px] font-bold tracking-[-0.01em]">Crear proyecto</h3>
+      <button class="ui-btn btn-ghost !p-2 -mr-2 -mt-1" data-overlay-close aria-label="Cerrar"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <p class="text-[16px] mb-6" style="color: var(--muted);">Dale un nombre a tu proyecto para empezar.</p>
+    <label class="block mb-6"><span class="ui-label">Nombre</span><input type="text" class="ui-field" placeholder="Mi proyecto" /></label>
+    <div class="flex justify-end gap-3">
+      <button class="ui-btn btn-secondary" data-overlay-close>Cancelar</button>
+      <button class="ui-btn btn-primary" data-overlay-close>Crear</button>
+    </div>
+  </div>
+</div>
+
+<!-- Drawer derecha -->
+<div class="ui-overlay" data-overlay="drawer-right">
+  <div class="ui-backdrop" data-overlay-close></div>
+  <div class="ui-drawer" role="dialog" aria-modal="true">
+    <div class="flex items-start justify-between gap-4 mb-6">
+      <div>
+        <h3 class="font-display text-[24px] font-bold tracking-[-0.01em]">Filtros</h3>
+        <p class="text-[15px] mt-1" style="color: var(--muted);">Refiná los resultados</p>
+      </div>
+      <button class="ui-btn btn-ghost !p-2 -mr-2 -mt-1" data-overlay-close aria-label="Cerrar"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="space-y-6">
+      <label class="block"><span class="ui-label">Estado</span>
+        <div data-select data-value="Activos"><div data-options="Todos|Activos|Pausados|Archivados"></div></div>
+      </label>
+      <label class="block"><span class="ui-label">Desde</span><div data-datepicker data-placeholder="dd/mm/aaaa"></div></label>
+      <div><span class="ui-label">Incluir</span>
+        <div class="space-y-3">
+          <label class="ui-check"><input type="checkbox" class="peer sr-only" checked /><span class="ui-box"></span><span>Con actividad reciente</span></label>
+          <label class="ui-check"><input type="checkbox" class="peer sr-only" /><span class="ui-box"></span><span>Compartidos conmigo</span></label>
+        </div>
+      </div>
+    </div>
+    <div class="flex gap-3 mt-8">
+      <button class="ui-btn btn-secondary flex-1" data-overlay-close>Limpiar</button>
+      <button class="ui-btn btn-primary flex-1" data-overlay-close>Aplicar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Diálogo confirmación -->
+<div class="ui-overlay" data-overlay="dialog-confirm">
+  <div class="ui-backdrop" data-overlay-close></div>
+  <div class="ui-dialog pop-in" role="alertdialog" aria-modal="true">
+    <div class="w-12 h-12 rounded-2xl grid place-items-center mb-5" style="background: var(--accent-soft); color: var(--accent);">
+      <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+    </div>
+    <h3 class="font-display text-[22px] font-bold tracking-[-0.01em] mb-2">¿Confirmar publicación?</h3>
+    <p class="text-[16px] mb-7" style="color: var(--muted);">El proyecto quedará visible para todo tu equipo. Vas a poder editarlo después.</p>
+    <div class="flex gap-3">
+      <button class="ui-btn btn-secondary flex-1" data-overlay-close>Cancelar</button>
+      <button class="ui-btn btn-primary flex-1" data-overlay-close>Publicar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Diálogo de advertencia (no destructiva) -->
+<div class="ui-overlay" data-overlay="dialog-attention">
+  <div class="ui-backdrop" data-overlay-close></div>
+  <div class="ui-dialog pop-in" role="alertdialog" aria-modal="true">
+    <div class="w-12 h-12 rounded-2xl grid place-items-center mb-5" style="background: color-mix(in srgb, var(--warning) 14%, transparent); color: var(--warning);">
+      <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+    </div>
+    <h3 class="font-display text-[22px] font-bold tracking-[-0.01em] mb-2">Cambios sin guardar</h3>
+    <p class="text-[16px] mb-7" style="color: var(--muted);">Tenés cambios sin guardar. Si salís ahora se van a perder.</p>
+    <div class="flex gap-3">
+      <button class="ui-btn btn-secondary flex-1" data-overlay-close>Seguir editando</button>
+      <button class="ui-btn flex-1" style="background: var(--warning); color: #fff;" data-overlay-close>Salir sin guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Diálogo advertencia destructiva -->
+<div class="ui-overlay" data-overlay="dialog-warning">
+  <div class="ui-backdrop" data-overlay-close></div>
+  <div class="ui-dialog pop-in" role="alertdialog" aria-modal="true">
+    <div class="w-12 h-12 rounded-2xl grid place-items-center mb-5" style="background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger);">
+      <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+    </div>
+    <h3 class="font-display text-[22px] font-bold tracking-[-0.01em] mb-2">Eliminar proyecto</h3>
+    <p class="text-[16px] mb-7" style="color: var(--muted);">Esta acción es permanente y no se puede deshacer. Se borrarán todos los datos asociados.</p>
+    <div class="flex gap-3">
+      <button class="ui-btn btn-secondary flex-1" data-overlay-close>Cancelar</button>
+      <button class="ui-btn btn-danger flex-1" data-overlay-close>Sí, eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Diálogo informativo -->
+<div class="ui-overlay" data-overlay="dialog-info">
+  <div class="ui-backdrop" data-overlay-close></div>
+  <div class="ui-dialog pop-in" role="dialog" aria-modal="true">
+    <div class="w-12 h-12 rounded-2xl grid place-items-center mb-5" style="background: var(--accent-soft); color: var(--accent);">
+      <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5h.01"/></svg>
+    </div>
+    <h3 class="font-display text-[22px] font-bold tracking-[-0.01em] mb-2">Tu plan se actualizó</h3>
+    <p class="text-[16px] mb-7" style="color: var(--muted);">Ahora tenés acceso a proyectos ilimitados y exportación avanzada. Los cambios ya están activos en tu cuenta.</p>
+    <div class="flex justify-end">
+      <button class="ui-btn btn-primary" data-overlay-close>Entendido</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container" class="fixed bottom-6 right-6 z-[60] flex flex-col gap-3 w-[360px] max-w-[calc(100vw-48px)] pointer-events-none"></div>
+
+<!-- Estilos que dependen de clases utilitarias propias -->
+<style>
+  .nav-link { padding: 8px 12px; border-radius: 10px; color: var(--muted); transition: background 0.12s, color 0.12s; }
+  .nav-link:hover { background: var(--surface-2); color: var(--text); }
+  .nav-link.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+
+  .sec-head { margin-bottom: 28px; }
+  .font-display { font-family: "Bricolage Grotesque", "Plus Jakarta Sans", sans-serif; }
+  .sec-title { font-family: "Bricolage Grotesque", "Plus Jakarta Sans", sans-serif; font-size: clamp(30px, 4vw, 44px); font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
+  .sec-desc { margin-top: 14px; max-width: 620px; font-size: 18px; line-height: 1.6; color: var(--muted); }
+
+  .swatch { aspect-ratio: 1; border-radius: 14px; border: 1px solid var(--border); }
+  .chip { padding: 4px 10px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); }
+
+  .ui-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 9px; color: var(--text); letter-spacing: 0.01em; }
+
+  /* Checkbox / radio / toggle */
+  .ui-check { display: inline-flex; align-items: center; gap: 11px; cursor: pointer; font-size: 16px; color: var(--text); }
+  .ui-box { width: 22px; height: 22px; border-radius: 7px; border: 2px solid var(--border-strong); background: var(--surface); transition: all 0.15s; position: relative; flex-shrink: 0; }
+  .peer:checked ~ .ui-box { background: var(--accent); border-color: var(--accent); }
+  .ui-box::after { content: ''; position: absolute; left: 6px; top: 2px; width: 6px; height: 11px; border: solid var(--accent-fg); border-width: 0 2.5px 2.5px 0; transform: rotate(45deg) scale(0); transition: transform 0.15s; }
+  .peer:checked ~ .ui-box::after { transform: rotate(45deg) scale(1); }
+  .peer:focus-visible ~ .ui-box { box-shadow: 0 0 0 4px var(--accent-ring); }
+
+  .ui-radio { width: 22px; height: 22px; border-radius: 999px; border: 2px solid var(--border-strong); background: var(--surface); transition: all 0.15s; position: relative; flex-shrink: 0; }
+  .peer:checked ~ .ui-radio { border-color: var(--accent); }
+  .ui-radio::after { content: ''; position: absolute; inset: 0; margin: auto; width: 10px; height: 10px; border-radius: 999px; background: var(--accent); transform: scale(0); transition: transform 0.15s; }
+  .peer:checked ~ .ui-radio::after { transform: scale(1); }
+  .peer:focus-visible ~ .ui-radio { box-shadow: 0 0 0 4px var(--accent-ring); }
+
+  .ui-switch { width: 46px; height: 27px; border-radius: 999px; background: var(--border-strong); transition: background 0.18s; position: relative; flex-shrink: 0; }
+  .ui-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 21px; height: 21px; border-radius: 999px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3); transition: transform 0.18s; }
+  .peer:checked ~ .ui-switch { background: var(--accent); }
+  .peer:checked ~ .ui-switch::after { transform: translateX(19px); }
+  .peer:focus-visible ~ .ui-switch { box-shadow: 0 0 0 4px var(--accent-ring); }
+
+  /* Tabs */
+  .tab-btn { padding: 10px 18px; border-radius: 14px; font-weight: 600; font-size: 15px; color: var(--muted); transition: all 0.15s; }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+  html.dark .tab-btn.active { background: var(--surface-3); }
+
+  /* Tooltips */
+  .ui-tip-wrap { position: relative; display: inline-flex; }
+  .ui-tip { position: absolute; left: 50%; transform: translateX(-50%) translateY(4px); background: var(--text); color: var(--bg); font-size: 13px; font-weight: 500; padding: 8px 12px; border-radius: 10px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.15s, transform 0.15s; z-index: 50; box-shadow: var(--shadow-md); }
+  .ui-tip-top { bottom: calc(100% + 8px); }
+  .ui-tip-bottom { top: calc(100% + 8px); }
+  .ui-tip-wrap:hover .ui-tip, .ui-tip-wrap:focus-within .ui-tip { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Overlays */
+  .ui-overlay { position: fixed; inset: 0; z-index: 50; display: none; }
+  .ui-overlay.open { display: block; }
+  .ui-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.45); backdrop-filter: blur(4px); animation: pop-in 0.18s ease-out; }
+  .ui-modal, .ui-dialog { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: calc(100% - 48px); background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 32px; box-shadow: var(--shadow-lg); }
+  .ui-modal { max-width: 460px; }
+  .ui-dialog { max-width: 420px; }
+  .ui-drawer { position: absolute; right: 0; top: 0; height: 100%; width: 400px; max-width: calc(100vw - 40px); background: var(--surface); border-left: 1px solid var(--border); padding: 28px; box-shadow: var(--shadow-lg); overflow-y: auto; animation: drawer-in 0.24s cubic-bezier(0.22,1,0.36,1); }
+  @keyframes drawer-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+  /* Select / pickers triggers */
+  .ui-trigger { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 14px; padding: 13px 16px; font-size: 16px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; text-align: left; }
+  .ui-trigger:hover { border-color: var(--border-strong); }
+  .ui-trigger.open, .ui-trigger:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-ring); }
+  .ui-trigger.placeholder { color: var(--faint); }
+  .ui-pop { position: absolute; z-index: 30; margin-top: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow-lg); padding: 6px; animation: pop-in 0.14s ease-out; }
+  .ui-option { padding: 11px 13px; border-radius: 10px; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--text); }
+  .ui-option:hover, .ui-option.active { background: var(--surface-2); }
+  .ui-option.selected { color: var(--accent); font-weight: 600; }
+</style>
+
+<script>
+(function () {
+  'use strict';
+  var root = document.documentElement;
+
+  /* ---------- Tema y acento ---------- */
+  function syncThemeIcon() {
+    var dark = root.classList.contains('dark');
+    document.querySelector('.theme-sun').classList.toggle('hidden', !dark);
+    document.querySelector('.theme-moon').classList.toggle('hidden', dark);
+  }
+  document.getElementById('theme-toggle').addEventListener('click', function () {
+    root.classList.toggle('dark');
+    try { localStorage.setItem('ui-theme', root.classList.contains('dark') ? 'dark' : 'light'); } catch (e) {}
+    syncThemeIcon();
+  });
+  syncThemeIcon();
+
+  function syncAccentUI() {
+    var cur = root.getAttribute('data-accent');
+    document.querySelectorAll('[data-set-accent]').forEach(function (b) {
+      var on = b.getAttribute('data-set-accent') === cur;
+      b.style.boxShadow = on ? '0 0 0 2px var(--surface-2), 0 0 0 4px var(--text)' : 'none';
+      b.style.transform = on ? 'scale(1.05)' : 'scale(1)';
+    });
+  }
+  document.querySelectorAll('[data-set-accent]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var a = b.getAttribute('data-set-accent');
+      root.setAttribute('data-accent', a);
+      try { localStorage.setItem('ui-accent', a); } catch (e) {}
+      syncAccentUI();
+    });
+  });
+  syncAccentUI();
+
+  /* ---------- Number input (1.000.000,00) ---------- */
+  function formatNumberString(raw, decimals) {
+    raw = String(raw).replace(/[^\d,]/g, '');
+    var hasComma = raw.indexOf(',') !== -1;
+    var parts = raw.split(',');
+    var intPart = parts[0].replace(/^0+(?=\d)/, '');
+    var decPart = parts.slice(1).join('').slice(0, decimals);
+    if (intPart === '' && (hasComma || raw !== '')) intPart = '0';
+    intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    var out = intPart;
+    if (decimals > 0 && hasComma) out += ',' + decPart;
+    return out;
+  }
+  // Devuelve el número JS real desde el texto formateado
+  window.parseLocalNumber = function (formatted) {
+    if (!formatted) return null;
+    var n = parseFloat(String(formatted).replace(/\./g, '').replace(',', '.'));
+    return isNaN(n) ? null : n;
+  };
+  function readout(input) {
+    var wrap = input.closest('[data-num-wrap]') || input.parentElement;
+    var ro = wrap && wrap.parentElement ? wrap.parentElement.querySelector('[data-num-readout]') : null;
+    if (!ro) { var lbl = input.closest('label'); ro = lbl ? lbl.querySelector('[data-num-readout]') : null; }
+    if (ro) { var v = window.parseLocalNumber(input.value); ro.textContent = (v === null ? '—' : v); }
+  }
+  document.querySelectorAll('[data-number-input]').forEach(function (input) {
+    var decimals = parseInt(input.getAttribute('data-decimals') || '2', 10);
+    function apply() {
+      var formatted = formatNumberString(input.value, decimals);
+      input.value = formatted;
+      readout(input);
+    }
+    input.addEventListener('input', function () {
+      var atEnd = input.selectionStart === input.value.length;
+      apply();
+      if (atEnd) { input.selectionStart = input.selectionEnd = input.value.length; }
+    });
+    input.addEventListener('blur', function () {
+      if (decimals > 0 && input.value !== '') {
+        var n = window.parseLocalNumber(input.value);
+        if (n !== null) input.value = n.toLocaleString('es-AR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+        readout(input);
+      }
+    });
+    apply();
+  });
+  // Stepper custom
+  document.querySelectorAll('[data-step]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var group = btn.parentElement;
+      var input = group.querySelector('[data-step-target]');
+      if (!input) return;
+      var cur = window.parseLocalNumber(input.value) || 0;
+      cur = Math.max(0, cur + parseInt(btn.getAttribute('data-step'), 10));
+      input.value = formatNumberString(String(cur), 0);
+    });
+  });
+
+  /* ---------- Select custom ---------- */
+  function closeAllPops(except) {
+    document.querySelectorAll('.ui-pop').forEach(function (p) { if (p !== except) p.remove(); });
+    document.querySelectorAll('.ui-trigger.open').forEach(function (t) { if (!except || t._pop !== except) t.classList.remove('open'); });
+  }
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('.ui-pop') && !e.target.closest('.ui-trigger')) closeAllPops();
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeAllPops(); });
+
+  document.querySelectorAll('[data-select]').forEach(function (host) {
+    var opts = (host.querySelector('[data-options]').getAttribute('data-options') || '').split('|').filter(Boolean);
+    var placeholder = host.getAttribute('data-placeholder') || 'Seleccionar';
+    var value = host.getAttribute('data-value') || '';
+    host.innerHTML = '';
+    host.style.position = 'relative';
+    var trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'ui-trigger' + (value ? '' : ' placeholder');
+    trigger.innerHTML = '<span data-val>' + (value || placeholder) + '</span><svg class="w-5 h-5 shrink-0" style="color:var(--muted)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+    host.appendChild(trigger);
+    var valSpan = trigger.querySelector('[data-val]');
+    var activeIdx = Math.max(0, opts.indexOf(value));
+
+    function open() {
+      closeAllPops();
+      var pop = document.createElement('div');
+      pop.className = 'ui-pop scroll-thin';
+      pop.style.width = host.offsetWidth + 'px';
+      pop.style.maxHeight = '280px';
+      pop.style.overflowY = 'auto';
+      opts.forEach(function (o, i) {
+        var el = document.createElement('div');
+        el.className = 'ui-option' + (o === value ? ' selected' : '') + (i === activeIdx ? ' active' : '');
+        el.innerHTML = '<span>' + o + '</span>' + (o === value ? '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>' : '');
+        el.addEventListener('click', function () { choose(o); });
+        el.addEventListener('mouseenter', function () { activeIdx = i; refreshActive(pop); });
+        pop.appendChild(el);
+      });
+      host.appendChild(pop);
+      trigger.classList.add('open');
+      trigger._pop = pop;
+    }
+    function refreshActive(pop) {
+      [].forEach.call(pop.children, function (c, i) { c.classList.toggle('active', i === activeIdx); });
+    }
+    function choose(o) {
+      value = o;
+      valSpan.textContent = o;
+      trigger.classList.remove('placeholder');
+      host.setAttribute('data-value', o);
+      activeIdx = opts.indexOf(o);
+      closeAllPops();
+      host.dispatchEvent(new CustomEvent('change', { detail: o }));
+    }
+    trigger.addEventListener('click', function () {
+      if (trigger.classList.contains('open')) closeAllPops(); else open();
+    });
+    trigger.addEventListener('keydown', function (e) {
+      var pop = trigger._pop;
+      if (e.key === 'ArrowDown') { e.preventDefault(); if (!pop) { open(); } else { activeIdx = Math.min(opts.length - 1, activeIdx + 1); refreshActive(trigger._pop); } }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); if (pop) { activeIdx = Math.max(0, activeIdx - 1); refreshActive(pop); } }
+      else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (!pop) open(); else choose(opts[activeIdx]); }
+    });
+  });
+
+  /* ---------- Date picker ---------- */
+  var MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  var WD = ['L','M','M','J','V','S','D'];
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  document.querySelectorAll('[data-datepicker]').forEach(function (host) {
+    var placeholder = host.getAttribute('data-placeholder') || 'dd/mm/aaaa';
+    var selected = null; // Date
+    var view = new Date();
+    host.innerHTML = '';
+    host.style.position = 'relative';
+    var trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'ui-trigger placeholder';
+    trigger.innerHTML = '<span data-val>' + placeholder + '</span><svg class="w-5 h-5 shrink-0" style="color:var(--muted)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>';
+    host.appendChild(trigger);
+    var valSpan = trigger.querySelector('[data-val]');
+
+    function setVal(d) {
+      selected = d;
+      valSpan.textContent = pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear();
+      trigger.classList.remove('placeholder');
+    }
+    function build() {
+      closeAllPops();
+      var pop = document.createElement('div');
+      pop.className = 'ui-pop';
+      pop.style.width = '300px';
+      pop.style.padding = '14px';
+      render(pop);
+      host.appendChild(pop);
+      trigger.classList.add('open');
+      trigger._pop = pop;
+    }
+    function render(pop) {
+      var y = view.getFullYear(), m = view.getMonth();
+      var today = new Date();
+      var first = (new Date(y, m, 1).getDay() + 6) % 7;
+      var days = new Date(y, m + 1, 0).getDate();
+      var h = '';
+      h += '<div class="flex items-center justify-between mb-3">';
+      h += '<button type="button" data-nav="-1" class="ui-btn btn-ghost !p-2"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>';
+      h += '<span class="font-semibold text-[15px]">' + MONTHS[m] + ' ' + y + '</span>';
+      h += '<button type="button" data-nav="1" class="ui-btn btn-ghost !p-2"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>';
+      h += '</div>';
+      h += '<div class="grid grid-cols-7 gap-1 mb-1">';
+      WD.forEach(function (d) { h += '<div class="text-center font-mono text-[11px] py-1" style="color:var(--faint)">' + d + '</div>'; });
+      h += '</div><div class="grid grid-cols-7 gap-1">';
+      for (var i = 0; i < first; i++) h += '<div></div>';
+      for (var d = 1; d <= days; d++) {
+        var isToday = today.getFullYear() === y && today.getMonth() === m && today.getDate() === d;
+        var isSel = selected && selected.getFullYear() === y && selected.getMonth() === m && selected.getDate() === d;
+        var style = 'height:36px;border-radius:10px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;';
+        if (isSel) style += 'background:var(--accent);color:var(--accent-fg);font-weight:600;';
+        else if (isToday) style += 'box-shadow:inset 0 0 0 1.5px var(--accent);color:var(--accent);font-weight:600;';
+        else style += 'color:var(--text);';
+        h += '<div data-day="' + d + '" style="' + style + '" onmouseover="if(!this.style.background.includes(\'accent\')&&this.style.boxShadow===\'\')this.style.background=\'var(--surface-2)\'" onmouseout="if(!' + (isSel ? 'true' : 'false') + ')this.style.background=\'' + (isSel ? 'var(--accent)' : 'transparent') + '\'">' + d + '</div>';
+      }
+      h += '</div>';
+      h += '<div class="flex justify-between mt-3 pt-3" style="border-top:1px solid var(--border)">';
+      h += '<button type="button" data-today class="ui-btn btn-ghost !py-1.5 !px-3 !text-[13px]" style="color:var(--accent)">Hoy</button>';
+      h += '<button type="button" data-clear class="ui-btn btn-ghost !py-1.5 !px-3 !text-[13px]" style="color:var(--muted)">Limpiar</button>';
+      h += '</div>';
+      pop.innerHTML = h;
+      pop.querySelector('[data-nav="-1"]').onclick = function (e) { e.stopPropagation(); view = new Date(y, m - 1, 1); render(pop); };
+      pop.querySelector('[data-nav="1"]').onclick = function (e) { e.stopPropagation(); view = new Date(y, m + 1, 1); render(pop); };
+      pop.querySelectorAll('[data-day]').forEach(function (el) {
+        el.onclick = function () { setVal(new Date(y, m, parseInt(el.getAttribute('data-day'), 10))); closeAllPops(); };
+      });
+      pop.querySelector('[data-today]').onclick = function () { var t = new Date(); view = new Date(t.getFullYear(), t.getMonth(), 1); setVal(t); closeAllPops(); };
+      pop.querySelector('[data-clear]').onclick = function () { selected = null; valSpan.textContent = placeholder; trigger.classList.add('placeholder'); closeAllPops(); };
+    }
+    trigger.addEventListener('click', function () {
+      if (trigger.classList.contains('open')) closeAllPops(); else { if (selected) view = new Date(selected.getFullYear(), selected.getMonth(), 1); build(); }
+    });
+  });
+
+  /* ---------- Time picker ---------- */
+  document.querySelectorAll('[data-timepicker]').forEach(function (host) {
+    var placeholder = host.getAttribute('data-placeholder') || '--:--';
+    var initial = host.getAttribute('data-value') || '';
+    var hh = initial ? initial.split(':')[0] : null;
+    var mm = initial ? initial.split(':')[1] : null;
+    host.innerHTML = '';
+    host.style.position = 'relative';
+    var trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'ui-trigger' + (initial ? '' : ' placeholder');
+    trigger.innerHTML = '<span data-val>' + (initial || placeholder) + '</span><svg class="w-5 h-5 shrink-0" style="color:var(--muted)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>';
+    host.appendChild(trigger);
+    var valSpan = trigger.querySelector('[data-val]');
+
+    function commit() {
+      if (hh != null && mm != null) { valSpan.textContent = hh + ':' + mm; trigger.classList.remove('placeholder'); }
+    }
+    function build() {
+      closeAllPops();
+      var pop = document.createElement('div');
+      pop.className = 'ui-pop';
+      pop.style.width = '200px';
+      pop.style.padding = '8px';
+      var h = '<div class="flex" style="height:220px">';
+      h += '<div data-col="h" class="scroll-thin" style="flex:1;overflow-y:auto;padding-right:4px">';
+      for (var i = 0; i < 24; i++) { var v = pad(i); h += '<div data-h="' + v + '" class="ui-option" style="justify-content:center;' + (v === hh ? 'background:var(--accent-soft);color:var(--accent);font-weight:600;' : '') + '">' + v + '</div>'; }
+      h += '</div><div style="width:1px;background:var(--border)"></div>';
+      h += '<div data-col="m" class="scroll-thin" style="flex:1;overflow-y:auto;padding-left:4px">';
+      for (var j = 0; j < 60; j++) { var w = pad(j); h += '<div data-m="' + w + '" class="ui-option" style="justify-content:center;' + (w === mm ? 'background:var(--accent-soft);color:var(--accent);font-weight:600;' : '') + '">' + w + '</div>'; }
+      h += '</div></div>';
+      pop.innerHTML = h;
+      host.appendChild(pop);
+      trigger.classList.add('open');
+      trigger._pop = pop;
+      pop.querySelectorAll('[data-h]').forEach(function (el) {
+        el.onclick = function (e) { e.stopPropagation(); hh = el.getAttribute('data-h'); pop.querySelectorAll('[data-h]').forEach(function (x) { x.style.cssText = 'justify-content:center'; }); el.style.cssText = 'justify-content:center;background:var(--accent-soft);color:var(--accent);font-weight:600'; commit(); };
+      });
+      pop.querySelectorAll('[data-m]').forEach(function (el) {
+        el.onclick = function (e) { e.stopPropagation(); mm = el.getAttribute('data-m'); pop.querySelectorAll('[data-m]').forEach(function (x) { x.style.cssText = 'justify-content:center'; }); el.style.cssText = 'justify-content:center;background:var(--accent-soft);color:var(--accent);font-weight:600'; commit(); };
+      });
+      // autoscroll a la selección
+      var sh = pop.querySelector('[data-h="' + hh + '"]'); if (sh) sh.scrollIntoViewIfNeeded ? sh.scrollIntoViewIfNeeded() : (pop.querySelector('[data-col=h]').scrollTop = sh.offsetTop - 80);
+      var sm = pop.querySelector('[data-m="' + mm + '"]'); if (sm) (pop.querySelector('[data-col=m]').scrollTop = sm.offsetTop - 80);
+    }
+    trigger.addEventListener('click', function () {
+      if (trigger.classList.contains('open')) closeAllPops(); else build();
+    });
+  });
+
+  /* ---------- Tabs ---------- */
+  document.querySelectorAll('[data-tabs]').forEach(function (host) {
+    var btns = host.querySelectorAll('[data-tab]');
+    var panels = host.querySelectorAll('[data-panel]');
+    function activate(id) {
+      btns.forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-tab') === id); });
+      panels.forEach(function (p) { p.classList.toggle('hidden', p.getAttribute('data-panel') !== id); });
+    }
+    btns.forEach(function (b) { b.addEventListener('click', function () { activate(b.getAttribute('data-tab')); }); });
+    activate(btns[0].getAttribute('data-tab'));
+  });
+
+  /* ---------- Overlays ---------- */
+  function openOverlay(id) {
+    var ov = document.querySelector('[data-overlay="' + id + '"]');
+    if (ov) { ov.classList.add('open'); document.body.style.overflow = 'hidden'; }
+  }
+  function closeOverlay(ov) { ov.classList.remove('open'); document.body.style.overflow = ''; }
+  document.querySelectorAll('[data-open]').forEach(function (b) {
+    b.addEventListener('click', function () { openOverlay(b.getAttribute('data-open')); });
+  });
+  document.querySelectorAll('[data-overlay]').forEach(function (ov) {
+    ov.querySelectorAll('[data-overlay-close]').forEach(function (c) {
+      c.addEventListener('click', function () { closeOverlay(ov); });
+    });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') document.querySelectorAll('.ui-overlay.open').forEach(closeOverlay);
+  });
+
+  /* ---------- Toasts ---------- */
+  var ICONS = {
+    success: '<path d="M20 6L9 17l-5-5"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5h.01"/>',
+    warning: '<path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+    error: '<circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/>'
+  };
+  var COLORS = { success: 'var(--success)', info: 'var(--accent)', warning: 'var(--warning)', error: 'var(--danger)' };
+  window.showToast = function (opts) {
+    opts = opts || {};
+    var variant = opts.variant || 'info';
+    var c = document.getElementById('toast-container');
+    var t = document.createElement('div');
+    t.className = 'pointer-events-auto card flex items-start gap-3 p-4';
+    t.style.cssText += 'box-shadow:var(--shadow-lg);animation:toast-in .22s cubic-bezier(.22,1,.36,1);';
+    t.innerHTML =
+      '<span class="shrink-0 w-9 h-9 rounded-xl grid place-items-center" style="background:color-mix(in srgb,' + COLORS[variant] + ' 14%,transparent);color:' + COLORS[variant] + '">' +
+        '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + ICONS[variant] + '</svg></span>' +
+      '<div class="flex-1 min-w-0"><div class="font-semibold text-[15px]">' + (opts.title || '') + '</div>' +
+        (opts.desc ? '<div class="text-[14px] mt-0.5" style="color:var(--muted)">' + opts.desc + '</div>' : '') + '</div>' +
+      '<button class="shrink-0 -mr-1 -mt-1 p-1.5 rounded-lg" style="color:var(--faint)" aria-label="Cerrar"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>';
+    var rm = function () { t.style.transition = 'opacity .2s, transform .2s'; t.style.opacity = '0'; t.style.transform = 'translateX(40px)'; setTimeout(function () { t.remove(); }, 200); };
+    t.querySelector('button').onclick = rm;
+    c.appendChild(t);
+    setTimeout(rm, 4200);
+  };
+
+  /* ---------- Scroll spy nav ---------- */
+  var links = [].slice.call(document.querySelectorAll('#side-nav .nav-link'));
+  var sections = links.map(function (l) { return document.querySelector(l.getAttribute('href')); }).filter(Boolean);
+  function spy() {
+    var pos = window.scrollY + 120;
+    var current = sections[0];
+    sections.forEach(function (s) { if (s.offsetTop <= pos) current = s; });
+    links.forEach(function (l) { l.classList.toggle('active', l.getAttribute('href') === '#' + (current ? current.id : '')); });
+  }
+  window.addEventListener('scroll', spy, { passive: true });
+  spy();
+})();
+</script>
+
+</body>
+</html>

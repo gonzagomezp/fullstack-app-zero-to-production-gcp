@@ -1,0 +1,72 @@
+# Copy this to each service folder as `.dockerignore`.
+# Keeps secrets, VCS history, local junk, and bloat out of the build context
+# and out of image layers. Trim/extend per service (Node vs Python).
+
+# --- Secrets & local config (NEVER ship these) ---
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*-key.json
+credentials.json
+service-account*.json
+secrets/
+
+# --- VCS / CI / editor ---
+.git
+.gitignore
+.gitattributes
+.github/
+.gitlab-ci.yml
+.circleci/
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# --- Node ---
+node_modules
+npm-debug.log*
+yarn-error.log*
+.npm
+.pnpm-store/
+.next/
+dist/
+build/
+coverage/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+.env/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.tox/
+htmlcov/
+.coverage
+
+# --- Docker / infra (avoid recursive context) ---
+Dockerfile*
+.dockerignore
+docker-compose*.yml
+
+# --- Docs & tests (usually not needed at runtime) ---
+README.md
+CLAUDE.md
+docs/
+tests/
+test/
+*.md
+!package.json
+
+# --- Misc ---
+tmp/
+*.log
+.cache/

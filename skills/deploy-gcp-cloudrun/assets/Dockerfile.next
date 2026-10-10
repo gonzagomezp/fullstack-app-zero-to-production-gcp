@@ -1,0 +1,60 @@
+# Multistage Dockerfile for a Next.js (App Router) app on Cloud Run.
+# Requires `output: 'standalone'` in next.config.js so the builder emits a
+# self-contained server bundle. Final stage is distroless nodejs nonroot.
+# Re-verify base image tags (node major, distroless variant) before building.
+#
+# This is the PUBLIC frontend (--ingress all --allow-unauthenticated).
+# No secrets baked in. Only NEXT_PUBLIC_* values are safe at build time
+# (they ship to the browser); server secrets come from Cloud Run env/Secret Mgr.
+
+# ---------- deps ----------
+FROM node:22-slim AS deps
+WORKDIR /app
+# Install only production-relevant deps deterministically.
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+# ---------- builder ----------
+FROM node:22-slim AS builder
+WORKDIR /app
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+# Produces .next/standalone (server) and .next/static (assets).
+RUN npm run build
+
+# ---------- final ----------
+# Distroless nodejs: no shell, no npm, runs as nonroot (UID 65532).
+FROM gcr.io/distroless/nodejs22-debian12:nonroot
+WORKDIR /app
+
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    PORT=8080 \
+    HOSTNAME=0.0.0.0
+
+# Standalone output: server.js + minimal node_modules, then static + public.
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+
+EXPOSE 8080
+
+# Distroless nodejs entrypoint is `node`; run the standalone server.
+# server.js honors PORT and HOSTNAME. Add a /healthz route (or use / ) for probes.
+CMD ["server.js"]
+
+# ----------------------------------------------------------------------------
+# Alternative final stage (slim + explicit non-root) if you need a shell:
+#
+# FROM node:22-slim
+# WORKDIR /app
+# ENV NODE_ENV=production PORT=8080 HOSTNAME=0.0.0.0
+# RUN groupadd --system app && useradd --system --gid app --uid 10001 app
+# COPY --from=builder --chown=10001:app /app/.next/standalone ./
+# COPY --from=builder --chown=10001:app /app/.next/static ./.next/static
+# COPY --from=builder --chown=10001:app /app/public ./public
+# USER 10001
+# EXPOSE 8080
+# CMD ["node", "server.js"]
+# ----------------------------------------------------------------------------

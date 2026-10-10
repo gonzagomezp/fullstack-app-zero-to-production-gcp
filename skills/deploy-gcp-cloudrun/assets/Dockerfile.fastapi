@@ -1,0 +1,64 @@
+# Multistage Dockerfile for a FastAPI backend on Cloud Run.
+# Builder installs deps into a venv on slim; final stage is distroless nonroot.
+# Re-verify base image tags (python patch, distroless variant) before building.
+#
+# Backend is INTERNAL on Cloud Run (--ingress internal --no-allow-unauthenticated).
+# No secrets are baked in — inject via Cloud Run env vars / Secret Manager.
+
+# ---------- builder ----------
+FROM python:3.12.13-slim AS builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+
+# Create an isolated venv we can copy wholesale into the final image.
+RUN python -m venv /app/.venv
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Install deps first for better layer caching.
+# Using pip + requirements.txt. (For uv: `pip install uv` then
+# `uv pip install --python /app/.venv/bin/python -r requirements.txt`.)
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application source.
+COPY . .
+
+# ---------- final ----------
+# Distroless: no shell, no package manager, runs as nonroot (UID 65532).
+FROM gcr.io/distroless/python3-debian12:nonroot
+
+ENV PYTHONUNBUFFERED=1 \
+    PATH="/app/.venv/bin:$PATH" \
+    PORT=8080
+
+WORKDIR /app
+
+# Bring in the venv and app from the builder.
+COPY --from=builder /app/.venv /app/.venv
+COPY --from=builder /app /app
+
+EXPOSE 8080
+
+# Distroless python image's entrypoint is `python3`; pass the module + args.
+# Cloud Run sets $PORT (8080). uvicorn must bind 0.0.0.0:$PORT.
+# Provide a lightweight /healthz route in the app for startup/liveness probes.
+CMD ["-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+
+# ----------------------------------------------------------------------------
+# Alternative final stage (slim + explicit non-root) if you need a shell:
+#
+# FROM python:3.12.13-slim
+# ENV PYTHONUNBUFFERED=1 PATH="/app/.venv/bin:$PATH" PORT=8080
+# RUN groupadd --system app && useradd --system --gid app --uid 10001 app
+# WORKDIR /app
+# COPY --from=builder --chown=10001:app /app/.venv /app/.venv
+# COPY --from=builder --chown=10001:app /app /app
+# USER 10001
+# EXPOSE 8080
+# CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+# ----------------------------------------------------------------------------

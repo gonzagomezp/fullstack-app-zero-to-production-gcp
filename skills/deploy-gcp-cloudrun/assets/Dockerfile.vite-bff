@@ -1,0 +1,93 @@
+# Multistage Dockerfile for a Vite static frontend served by a small Node BFF.
+# The BFF serves the built static assets AND proxies /api to the INTERNAL backend
+# (attaching a Google ID token for Cloud Run IAM auth — see webhooks-service.md
+# and cloudrun-best-practices.md for the token pattern).
+# Re-verify base image tags before building.
+#
+# This is the PUBLIC frontend (--ingress all). The backend stays internal; only
+# the BFF talks to it, server-side, with an ID token. No secrets baked in.
+
+# ---------- web builder (Vite static assets) ----------
+FROM node:22-slim AS web-builder
+WORKDIR /web
+COPY package.json package-lock.json* ./
+RUN npm ci
+COPY . .
+# Emits static assets to /web/dist (Vite default).
+RUN npm run build
+
+# ---------- bff deps (production only) ----------
+# Assumes the Node BFF server lives in ./server with its own package.json.
+FROM node:22-slim AS bff-deps
+WORKDIR /bff
+COPY server/package.json server/package-lock.json* ./
+RUN npm ci --omit=dev
+
+# ---------- final ----------
+# Distroless nodejs: no shell, no npm, runs as nonroot (UID 65532).
+FROM gcr.io/distroless/nodejs22-debian12:nonroot
+WORKDIR /app
+
+ENV NODE_ENV=production \
+    PORT=8080
+
+# BFF server code + its production node_modules.
+COPY --from=bff-deps /bff/node_modules ./node_modules
+COPY server/ ./
+# Built static assets the BFF will serve (e.g. from ./public).
+COPY --from=web-builder /web/dist ./public
+
+EXPOSE 8080
+
+# Distroless nodejs entrypoint is `node`. The BFF must:
+#   - serve ./public statically
+#   - proxy /api/* to BACKEND_URL with an ID token (audience = BACKEND_URL)
+#   - listen on 0.0.0.0:$PORT and expose /healthz
+# BACKEND_URL is injected at runtime via Cloud Run env vars.
+CMD ["index.js"]
+
+# ----------------------------------------------------------------------------
+# Minimal BFF sketch (server/index.js) — Express + http-proxy-middleware +
+# google-auth-library. Proxies /api to the internal backend with an ID token.
+#
+# import express from 'express';
+# import { createProxyMiddleware } from 'http-proxy-middleware';
+# import { GoogleAuth } from 'google-auth-library';
+#
+# const PORT = process.env.PORT || 8080;
+# const BACKEND_URL = process.env.BACKEND_URL;            // internal backend URL
+# const auth = new GoogleAuth();
+# const app = express();
+#
+# app.get('/healthz', (_req, res) => res.send('ok'));
+#
+# app.use('/api', createProxyMiddleware({
+#   target: BACKEND_URL,
+#   changeOrigin: true,
+#   on: {
+#     proxyReq: async (proxyReq) => {
+#       const client = await auth.getIdTokenClient(BACKEND_URL);
+#       const headers = await client.getRequestHeaders();   // Authorization: Bearer <id_token>
+#       proxyReq.setHeader('authorization', headers.Authorization ?? headers.authorization);
+#     },
+#   },
+# }));
+#
+# app.use(express.static('public'));
+# // SPA fallback so client routing works:
+# app.get('*', (_req, res) => res.sendFile(process.cwd() + '/public/index.html'));
+# app.listen(PORT, '0.0.0.0', () => console.log(`BFF on ${PORT}`));
+# ----------------------------------------------------------------------------
+#
+# Alternative final stage (slim + explicit non-root) if you need a shell:
+# FROM node:22-slim
+# WORKDIR /app
+# ENV NODE_ENV=production PORT=8080
+# RUN groupadd --system app && useradd --system --gid app --uid 10001 app
+# COPY --from=bff-deps --chown=10001:app /bff/node_modules ./node_modules
+# COPY --chown=10001:app server/ ./
+# COPY --from=web-builder --chown=10001:app /web/dist ./public
+# USER 10001
+# EXPOSE 8080
+# CMD ["node", "index.js"]
+# ----------------------------------------------------------------------------
